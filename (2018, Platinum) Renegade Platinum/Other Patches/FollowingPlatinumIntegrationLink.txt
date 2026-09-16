@@ -1,0 +1,5 @@
+This is a separate patch to be applied to a vanilla Platinum ROM that combines both the v1.3.0 of Renegade Platinum and the Following Platinum mod (found at https://pokehacking.com/fangames/following-platinum/).
+
+Big thanks to Mikelan98 and AdAstra for making the Following Platinum mod, and to chensquared for creating the combined patch!
+
+https://www.reddit.com/r/PokemonROMhacks/comments/s4fbhi/complete_renegade_platinum_and_following_platinum/

@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.nds
+*.nds.bak
+*.log
+.pytest_cache/
+.mypy_cache/
+out/
+tools/*.exe
+tools/*.zip
+**/Old Versions/
