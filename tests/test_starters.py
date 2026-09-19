@@ -17,3 +17,29 @@ def test_describe_does_not_name_species() -> None:
     text = result.describe().lower()
     for name in ("turtwig", "chimchar", "piplup", "pikachu", "charizard", "blastoise"):
         assert name not in text
+
+
+def test_ambiguous_graphics_prefix_leaves_the_briefcase_alone():
+    """Two matches must skip the rewrite, not corrupt code at the first one."""
+    from plat_rand.constants import STARTER_GRAPHICS_PREFIX
+    from plat_rand.starters import _patch_dppt_starter_graphics
+
+    filler = bytes(0x80)
+    overlay = bytearray(STARTER_GRAPHICS_PREFIX + filler + STARTER_GRAPHICS_PREFIX + filler)
+    before = bytes(overlay)
+    notes: list[str] = []
+    _patch_dppt_starter_graphics(overlay, (1, 2, 3), notes)
+    assert bytes(overlay) == before
+    assert "left vanilla" in notes[0]
+
+
+def test_graphics_prefix_at_the_very_end_is_not_written_past():
+    from plat_rand.constants import STARTER_GRAPHICS_PREFIX
+    from plat_rand.starters import _patch_dppt_starter_graphics
+
+    overlay = bytearray(bytes(0x40) + STARTER_GRAPHICS_PREFIX + bytes(4))
+    before = bytes(overlay)
+    notes: list[str] = []
+    _patch_dppt_starter_graphics(overlay, (387, 390, 393), notes)
+    assert bytes(overlay) == before
+    assert "no room" in notes[0]

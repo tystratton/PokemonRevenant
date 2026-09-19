@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from random import Random
 
-from plat_rand.binary import find_all, read_u16, write_u16
+from plat_rand.binary import find_all, find_unique, read_u16, write_u16
 from plat_rand.constants import (
     RIVAL_SCRIPT_FILES,
     RIVAL_SCRIPT_MAGIC,
@@ -113,12 +113,21 @@ def _patch_dppt_starter_graphics(overlay: bytearray, starters: tuple[int, int, i
 
     Port of Universal Pokémon Randomizer ZX's DPPt starter-graphics fix.
     """
-    offset = overlay.find(STARTER_GRAPHICS_PREFIX)
-    if offset < 0:
-        notes.append("Starter briefcase pictures left vanilla (graphics prefix not found)")
+    # First-match wins would rewrite code at the wrong address and crash the
+    # briefcase scene, so only patch a pattern that occurs exactly once.
+    offset = find_unique(overlay, STARTER_GRAPHICS_PREFIX)
+    if offset is None:
+        notes.append(
+            "Starter briefcase pictures left vanilla (graphics prefix missing "
+            "or ambiguous); the case still hands out the randomized species"
+        )
         return
 
     offset += len(STARTER_GRAPHICS_PREFIX)
+    # Widest write below: 0x16 + 0xA + 3 * 0xE for the per-species block, + 1.
+    if offset + 0x4B > len(overlay):
+        notes.append("Starter briefcase pictures left vanilla (no room to rewrite)")
+        return
     write_u16(overlay, offset + 0xC, read_u16(overlay, offset + 0xA))
     if offset % 4 == 0:
         overlay[offset + 0xC] = (overlay[offset + 0xC] - 1) & 0xFF
@@ -152,8 +161,8 @@ def _patch_dppt_starter_graphics(overlay: bytearray, starters: tuple[int, int, i
         offset += 0xE
 
     overlay[offset] = 1
-    inner = overlay.find(STARTER_GRAPHICS_PREFIX_INNER)
-    if inner >= 0:
+    inner = find_unique(overlay, STARTER_GRAPHICS_PREFIX_INNER)
+    if inner is not None:
         inner += len(STARTER_GRAPHICS_PREFIX_INNER)
         overlay[inner + 1] = 0x68
     notes.append("Updated starter briefcase pictures to match the randomized species")
@@ -165,8 +174,8 @@ def _patch_graphics_and_cries(
     old: tuple[int, int, int],
     notes: list[str],
 ) -> None:
-    cry = overlay.find(STARTER_CRIES_PREFIX)
-    if cry >= 0:
+    cry = find_unique(overlay, STARTER_CRIES_PREFIX)
+    if cry is not None:
         offset = cry + len(STARTER_CRIES_PREFIX)
         if offset + 12 <= len(overlay):
             for i, species in enumerate(starters):
