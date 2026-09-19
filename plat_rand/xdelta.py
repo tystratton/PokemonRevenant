@@ -61,6 +61,20 @@ def ensure_xdelta3(root: Path | None = None) -> Path:
     raise PatchError("Downloaded xdelta3 zip did not contain an .exe")
 
 
+def _decode_with_pyxdelta(source: Path, patch: Path, dest: Path, missing: PatchError) -> str:
+    """Decode with the pyxdelta wheel. Returns "" on success, else the error."""
+    try:
+        import pyxdelta
+    except ImportError:
+        raise PatchError(
+            f"{missing}\n"
+            "  Or, with no package manager:  pip install pyxdelta"
+        ) from missing
+    if not pyxdelta.decode(str(source), str(patch), str(dest)):
+        return "pyxdelta could not apply this patch to this source"
+    return ""
+
+
 def apply_xdelta(source: Path, patch: Path, dest: Path, root: Path | None = None) -> Path:
     source = Path(source)
     patch = Path(patch)
@@ -68,12 +82,19 @@ def apply_xdelta(source: Path, patch: Path, dest: Path, root: Path | None = None
     if dest.resolve() == source.resolve():
         raise PatchError("Refusing to apply a patch onto the source ROM path")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    exe = ensure_xdelta3(root)
     print(f"Applying {patch.name} -> {dest.name} (source ROM is not modified)")
-    command = [str(exe), "-d", "-f", "-s", str(source), str(patch), str(dest)]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    if completed.returncode != 0 or not dest.is_file() or dest.stat().st_size < 1_000_000:
-        detail = (completed.stderr or completed.stdout or "unknown xdelta error").strip()
+    try:
+        exe = ensure_xdelta3(root)
+    except PatchError as missing:
+        # No binary: fall back to the pip-installable decoder, so a container
+        # without working apt can still patch.
+        detail = _decode_with_pyxdelta(source, patch, dest, missing)
+    else:
+        command = [str(exe), "-d", "-f", "-s", str(source), str(patch), str(dest)]
+        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        detail = (completed.stderr or completed.stdout or "").strip() if completed.returncode else ""
+    if detail or not dest.is_file() or dest.stat().st_size < 1_000_000:
+        detail = detail or "unknown xdelta error"
         # A half-written base must not be mistaken for a usable one next run.
         dest.unlink(missing_ok=True)
         raise PatchError(
