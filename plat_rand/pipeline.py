@@ -11,7 +11,6 @@ from plat_rand import __version__
 from plat_rand.encounters import EncounterResult, randomize_encounters
 from plat_rand.catch_lock import apply_catch_lock
 from plat_rand.exp_share import ExpShareResult, apply_party_exp_share
-from plat_rand.intro import IntroResult, apply_intro_skip
 from plat_rand.items import ItemResult, patch_items
 from plat_rand.launch import launch_rom
 from plat_rand.nuzlocke import NuzlockeResult, apply_nuzlocke_patches
@@ -50,7 +49,6 @@ class RandomizeResult:
     items: ItemResult
     nuzlocke: NuzlockeResult
     exp_share: ExpShareResult
-    intro: IntroResult
     warnings: list[str] = field(default_factory=list)
     patch_path: Path | None = None
     base_path: Path | None = None
@@ -88,8 +86,6 @@ class RandomizeResult:
         lines.append("")
         lines.extend(self.exp_share.notes)
         lines.append("")
-        lines.extend(self.intro.notes)
-        lines.append("")
         if self.nuzlocke.cave_offset is not None:
             lines.append(f"Nuzlocke cave at ARM9 0x{self.nuzlocke.cave_offset:X}")
         lines.extend(f"  {hook}" for hook in self.nuzlocke.hooks)
@@ -106,8 +102,7 @@ class RandomizeResult:
         lines.append("  - Renegade Platinum trainer teams and difficulty kept")
         lines.append("  - Wild encounters randomized")
         lines.append("  - Starters randomized; briefcase shows the real ones")
-        lines.append("  - New Game skips the intro: girl named Moo, rival Barry, automatic suitcase selection")
-        lines.append("  - Running shoes and bicycle are already in the bag")
+        lines.append("  - The normal Platinum intro plays in full; no scene or story flags are skipped")
         lines.append("  - Whole party shares each fight's exp (split among them)")
         lines.append("  - Rare Candies replaced with Exp. Share")
         lines.append("  - Revives cannot be used")
@@ -127,7 +122,6 @@ class RandomizeResult:
             self.starters.describe(),
         ]
         lines.extend(self.exp_share.notes)
-        lines.extend(self.intro.notes)
         lines.extend(self.nuzlocke.notes)
         if self.launched:
             lines.append(self.launched)
@@ -206,7 +200,6 @@ def randomize_rom(
     encounters = randomize_encounters(rom, rng, allow_legendaries=options.allow_legendaries)
     items = patch_items(rom)
     exp_share = apply_party_exp_share(rom)
-    intro = apply_intro_skip(rom)
     lua_file = output_path.with_suffix(".lua") if options.write_lua else None
     nuzlocke = apply_nuzlocke_patches(rom, lua_path=lua_file)
     nuzlocke.notes.append(apply_catch_lock(rom))
@@ -235,7 +228,6 @@ def randomize_rom(
         items=items,
         nuzlocke=nuzlocke,
         exp_share=exp_share,
-        intro=intro,
         warnings=warnings,
         patch_path=patch_path,
         base_path=base_path,

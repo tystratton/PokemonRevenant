@@ -43,3 +43,12 @@ def find_all(haystack: bytes | bytearray, needle: bytes) -> list[int]:
 def find_unique(haystack: bytes | bytearray, needle: bytes) -> int | None:
     hits = find_all(haystack, needle)
     return hits[0] if len(hits) == 1 else None
+
+
+def thumb_bl(src: int, dest: int) -> bytes:
+    """ARMv4T Thumb BL (ARM9 has no Thumb-2 branch encoding)."""
+    offset = dest - (src + 4)
+    if offset % 2 or not -(1 << 22) <= offset < (1 << 22):
+        raise ValueError("Thumb BL target is unaligned or out of range")
+    return ((0xF000 | ((offset >> 12) & 0x7FF)).to_bytes(2, "little")
+            + (0xF800 | ((offset >> 1) & 0x7FF)).to_bytes(2, "little"))
