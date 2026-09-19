@@ -28,7 +28,15 @@ def tools_dir(root: Path | None = None) -> Path:
 def ensure_xdelta3(root: Path | None = None) -> Path:
     """Locate xdelta3: PATH first, then a vendored copy, then the Windows build."""
     folder = tools_dir(root)
-    for name in ("xdelta3.exe", "xdelta3-3.2.0-x86_64.exe", "xdelta.exe", "xdelta3"):
+    windows = os.name == "nt"
+    # A vendored .exe is unusable off Windows; running it gives Permission
+    # denied, so never offer it to a POSIX host that has a real xdelta3.
+    vendored = (
+        ("xdelta3.exe", "xdelta3-3.2.0-x86_64.exe", "xdelta.exe")
+        if windows
+        else ("xdelta3", "xdelta")
+    )
+    for name in vendored:
         candidate = folder / name
         if candidate.is_file():
             return candidate
@@ -36,7 +44,7 @@ def ensure_xdelta3(root: Path | None = None) -> Path:
     found = shutil.which("xdelta3") or shutil.which("xdelta")
     if found:
         return Path(found)
-    if os.name != "nt":
+    if not windows:
         raise PatchError(
             "xdelta3 was not found. Install it first:\n"
             "  Debian/Ubuntu/Codespaces:  sudo apt-get install -y xdelta3\n"
