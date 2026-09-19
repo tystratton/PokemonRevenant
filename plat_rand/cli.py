@@ -38,6 +38,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-lua", action="store_true", help="Do not write the BizHawk helper .lua")
     parser.add_argument("--no-renegade", action="store_true", help="Do not auto-apply the Renegade patch")
     parser.add_argument("--no-launch", action="store_true", help="Do not open an emulator after writing the ROM")
+    skips = parser.add_argument_group(
+        "bisecting a crash",
+        "Disable one patch at a time to find which one a misbehaving ROM dislikes.",
+    )
+    for flag, help_text in (
+        ("starters", "randomized starters and the briefcase sprite/cry rewrite"),
+        ("encounters", "wild encounter randomization"),
+        ("items", "Rare Candy -> Exp. Share and unusable Revives"),
+        ("exp-share", "whole-party exp sharing"),
+        ("nuzlocke", "fainted-mon deletion and the wipe freeze"),
+        ("catch-lock", "one catch per area"),
+    ):
+        skips.add_argument(f"--no-{flag}", action="store_true", help=f"Skip {help_text}")
     parser.add_argument("--gui", action="store_true", help="Open the window")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
@@ -71,6 +84,12 @@ def run_cli(argv: list[str] | None = None) -> int:
         apply_renegade=not args.no_renegade,
         # Opening N emulators at once helps nobody.
         launch=not args.no_launch and args.count == 1,
+        starters=not args.no_starters,
+        encounters=not args.no_encounters,
+        items=not args.no_items,
+        exp_share=not args.no_exp_share,
+        nuzlocke=not args.no_nuzlocke,
+        catch_lock=not args.no_catch_lock,
     )
 
     results = []

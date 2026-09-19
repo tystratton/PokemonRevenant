@@ -27,6 +27,7 @@ from plat_rand.rom import (
     assert_complete_rom,
     looks_like_renegade_file,
 )
+from plat_rand.constants import STARTER_OVERLAY_ID, VANILLA_STARTERS
 from plat_rand.starters import StarterResult, randomize_starters
 from plat_rand.xdelta import PatchError, apply_xdelta
 
@@ -38,6 +39,13 @@ class RandomizeOptions:
     write_lua: bool = True
     apply_renegade: bool = True
     launch: bool = True
+    # Per-patch switches, so a crash can be bisected to one subsystem.
+    starters: bool = True
+    encounters: bool = True
+    items: bool = True
+    exp_share: bool = True
+    nuzlocke: bool = True
+    catch_lock: bool = True
 
 
 @dataclass
@@ -202,13 +210,45 @@ def randomize_rom(
             "Trainer teams may still be vanilla."
         )
 
-    starters = randomize_starters(rom, rng, allow_legendaries=options.allow_legendaries)
-    encounters = randomize_encounters(rom, rng, allow_legendaries=options.allow_legendaries)
-    items = patch_items(rom)
-    exp_share = apply_party_exp_share(rom)
+    skipped: list[str] = []
+
+    def note_skip(name: str) -> None:
+        skipped.append(name)
+        warnings.append(f"{name} was skipped (--no-{name.replace(' ', '-')}).")
+
+    if options.starters:
+        starters = randomize_starters(rom, rng, allow_legendaries=options.allow_legendaries)
+    else:
+        note_skip("starters")
+        vanilla = tuple(VANILLA_STARTERS)
+        starters = StarterResult(STARTER_OVERLAY_ID, vanilla, vanilla,
+                                 ["Starters left vanilla"])
+    if options.encounters:
+        encounters = randomize_encounters(rom, rng, allow_legendaries=options.allow_legendaries)
+    else:
+        note_skip("encounters")
+        encounters = EncounterResult(path="(skipped)")
+    if options.items:
+        items = patch_items(rom)
+    else:
+        note_skip("items")
+        items = ItemResult(notes=["Item changes skipped"])
+    if options.exp_share:
+        exp_share = apply_party_exp_share(rom)
+    else:
+        note_skip("exp share")
+        exp_share = ExpShareResult(notes=["Party exp share skipped"])
     lua_file = output_path.with_suffix(".lua") if options.write_lua else None
-    nuzlocke = apply_nuzlocke_patches(rom, lua_path=lua_file)
-    nuzlocke.notes.append(apply_catch_lock(rom))
+    if options.nuzlocke:
+        nuzlocke = apply_nuzlocke_patches(rom, lua_path=lua_file)
+    else:
+        note_skip("nuzlocke")
+        nuzlocke = NuzlockeResult(notes=["Nuzlocke death rules skipped"])
+    if options.catch_lock:
+        nuzlocke.notes.append(apply_catch_lock(rom))
+    else:
+        note_skip("catch lock")
+        nuzlocke.notes.append("One-catch-per-area rule skipped")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     rom.save(output_path)
