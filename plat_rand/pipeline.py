@@ -21,7 +21,12 @@ from plat_rand.paths import (
     iter_renegade_patches,
     rom_patch_hint,
 )
-from plat_rand.rom import PlatinumRom, RomError, looks_like_renegade_file
+from plat_rand.rom import (
+    PlatinumRom,
+    RomError,
+    assert_complete_rom,
+    looks_like_renegade_file,
+)
 from plat_rand.starters import StarterResult, randomize_starters
 from plat_rand.xdelta import PatchError, apply_xdelta
 
@@ -185,6 +190,7 @@ def randomize_rom(
     rng = Random(seed)
     warnings: list[str] = []
 
+    assert_complete_rom(input_path)
     base_path, patch_path = _ensure_renegade_base(input_path, options, warnings)
     assert_safe_output(output_path, input_path, base_path)
 

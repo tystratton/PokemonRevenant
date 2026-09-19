@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 import urllib.request
 import zipfile
@@ -24,11 +26,22 @@ def tools_dir(root: Path | None = None) -> Path:
 
 
 def ensure_xdelta3(root: Path | None = None) -> Path:
+    """Locate xdelta3: PATH first, then a vendored copy, then the Windows build."""
     folder = tools_dir(root)
-    for name in ("xdelta3.exe", "xdelta3-3.2.0-x86_64.exe", "xdelta.exe"):
+    for name in ("xdelta3.exe", "xdelta3-3.2.0-x86_64.exe", "xdelta.exe", "xdelta3"):
         candidate = folder / name
         if candidate.is_file():
             return candidate
+    # Linux/macOS/WSL and Codespaces install xdelta3 through a package manager.
+    found = shutil.which("xdelta3") or shutil.which("xdelta")
+    if found:
+        return Path(found)
+    if os.name != "nt":
+        raise PatchError(
+            "xdelta3 was not found. Install it first:\n"
+            "  Debian/Ubuntu/Codespaces:  sudo apt-get install -y xdelta3\n"
+            "  macOS:                     brew install xdelta"
+        )
     zip_path = folder / XDELTA_ZIP_NAME
     urllib.request.urlretrieve(XDELTA_URL, zip_path)
     with zipfile.ZipFile(zip_path) as archive:
@@ -53,6 +66,8 @@ def apply_xdelta(source: Path, patch: Path, dest: Path, root: Path | None = None
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
     if completed.returncode != 0 or not dest.is_file() or dest.stat().st_size < 1_000_000:
         detail = (completed.stderr or completed.stdout or "unknown xdelta error").strip()
+        # A half-written base must not be mistaken for a usable one next run.
+        dest.unlink(missing_ok=True)
         raise PatchError(
             f"Could not apply {patch.name} to {source.name}. {detail}\n"
             "The Platinum dump may be the other US revision (Rev 0 vs Rev 1)."
