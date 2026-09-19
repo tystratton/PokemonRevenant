@@ -24,6 +24,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-o", "--output", help="Output .nds (default: out/RenegadePlatinum-nuzlocke.nds)")
     parser.add_argument("--seed", type=int, help="RNG seed (random if omitted)")
     parser.add_argument(
+        "--count",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Generate N ROMs, each with its own seed (default: 1)",
+    )
+    parser.add_argument(
         "--no-legendaries",
         action="store_true",
         help="Keep legendaries/mythicals out of encounters and starters",
@@ -50,21 +57,43 @@ def run_cli(argv: list[str] | None = None) -> int:
         )
         return 0
 
+    if args.count < 1:
+        parser.error("--count must be at least 1")
+    if args.count > 1 and args.output:
+        parser.error("--output names a single file; drop it when using --count")
+    if args.count > 1 and args.seed is not None:
+        parser.error("--seed fixes one shuffle; drop it when using --count")
+
     options = RandomizeOptions(
         seed=args.seed,
         allow_legendaries=not args.no_legendaries,
         write_lua=not args.no_lua,
         apply_renegade=not args.no_renegade,
-        launch=not args.no_launch,
+        # Opening N emulators at once helps nobody.
+        launch=not args.no_launch and args.count == 1,
     )
-    try:
-        if args.rom:
-            result = randomize_rom(Path(args.rom), args.output, options)
-        else:
-            result = randomize_auto(options)
-    except (RomError, FileNotFoundError, OSError, PatchError, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
 
-    print(result.public_text())
+    results = []
+    for index in range(args.count):
+        if args.count > 1:
+            print(f"--- ROM {index + 1} of {args.count} ---")
+        try:
+            if args.rom:
+                result = randomize_rom(Path(args.rom), args.output, options)
+            else:
+                result = randomize_auto(options)
+        except (RomError, FileNotFoundError, OSError, PatchError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            # Keep whatever already succeeded; report it before giving up.
+            for done in results:
+                print(f"  kept {done.output_path}", file=sys.stderr)
+            return 1
+        results.append(result)
+
+    for result in results:
+        print(result.public_text())
+    if len(results) > 1:
+        print(f"Wrote {len(results)} ROMs:")
+        for result in results:
+            print(f"  {result.output_path}  (seed {result.seed})")
     return 0

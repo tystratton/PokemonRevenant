@@ -15,7 +15,7 @@ from plat_rand.catch_lock import (
     build_message,
     build_start,
 )
-from plat_rand.intro import thumb_bl
+from plat_rand.binary import thumb_bl
 from plat_rand.rom import PlatinumRom
 
 MAP_LABEL = 0x203A138

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 import urllib.request
 import zipfile
@@ -24,11 +26,30 @@ def tools_dir(root: Path | None = None) -> Path:
 
 
 def ensure_xdelta3(root: Path | None = None) -> Path:
+    """Locate xdelta3: PATH first, then a vendored copy, then the Windows build."""
     folder = tools_dir(root)
-    for name in ("xdelta3.exe", "xdelta3-3.2.0-x86_64.exe", "xdelta.exe"):
+    windows = os.name == "nt"
+    # A vendored .exe is unusable off Windows; running it gives Permission
+    # denied, so never offer it to a POSIX host that has a real xdelta3.
+    vendored = (
+        ("xdelta3.exe", "xdelta3-3.2.0-x86_64.exe", "xdelta.exe")
+        if windows
+        else ("xdelta3", "xdelta")
+    )
+    for name in vendored:
         candidate = folder / name
         if candidate.is_file():
             return candidate
+    # Linux/macOS/WSL and Codespaces install xdelta3 through a package manager.
+    found = shutil.which("xdelta3") or shutil.which("xdelta")
+    if found:
+        return Path(found)
+    if not windows:
+        raise PatchError(
+            "xdelta3 was not found. Install it first:\n"
+            "  Debian/Ubuntu/Codespaces:  sudo apt-get install -y xdelta3\n"
+            "  macOS:                     brew install xdelta"
+        )
     zip_path = folder / XDELTA_ZIP_NAME
     urllib.request.urlretrieve(XDELTA_URL, zip_path)
     with zipfile.ZipFile(zip_path) as archive:
@@ -40,6 +61,20 @@ def ensure_xdelta3(root: Path | None = None) -> Path:
     raise PatchError("Downloaded xdelta3 zip did not contain an .exe")
 
 
+def _decode_with_pyxdelta(source: Path, patch: Path, dest: Path, missing: PatchError) -> str:
+    """Decode with the pyxdelta wheel. Returns "" on success, else the error."""
+    try:
+        import pyxdelta
+    except ImportError:
+        raise PatchError(
+            f"{missing}\n"
+            "  Or, with no package manager:  pip install pyxdelta"
+        ) from missing
+    if not pyxdelta.decode(str(source), str(patch), str(dest)):
+        return "pyxdelta could not apply this patch to this source"
+    return ""
+
+
 def apply_xdelta(source: Path, patch: Path, dest: Path, root: Path | None = None) -> Path:
     source = Path(source)
     patch = Path(patch)
@@ -47,12 +82,21 @@ def apply_xdelta(source: Path, patch: Path, dest: Path, root: Path | None = None
     if dest.resolve() == source.resolve():
         raise PatchError("Refusing to apply a patch onto the source ROM path")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    exe = ensure_xdelta3(root)
     print(f"Applying {patch.name} -> {dest.name} (source ROM is not modified)")
-    command = [str(exe), "-d", "-f", "-s", str(source), str(patch), str(dest)]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    if completed.returncode != 0 or not dest.is_file() or dest.stat().st_size < 1_000_000:
-        detail = (completed.stderr or completed.stdout or "unknown xdelta error").strip()
+    try:
+        exe = ensure_xdelta3(root)
+    except PatchError as missing:
+        # No binary: fall back to the pip-installable decoder, so a container
+        # without working apt can still patch.
+        detail = _decode_with_pyxdelta(source, patch, dest, missing)
+    else:
+        command = [str(exe), "-d", "-f", "-s", str(source), str(patch), str(dest)]
+        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        detail = (completed.stderr or completed.stdout or "").strip() if completed.returncode else ""
+    if detail or not dest.is_file() or dest.stat().st_size < 1_000_000:
+        detail = detail or "unknown xdelta error"
+        # A half-written base must not be mistaken for a usable one next run.
+        dest.unlink(missing_ok=True)
         raise PatchError(
             f"Could not apply {patch.name} to {source.name}. {detail}\n"
             "The Platinum dump may be the other US revision (Rev 0 vs Rev 1)."

@@ -15,7 +15,7 @@ Your clean root ROM is never overwritten.
 - Renegade Platinum trainer teams and difficulty
 - Randomized wild encounters (same levels)
 - Randomized starters (briefcase shows the real ones)
-- New Game skips the intro and opens the three-Pokemon suitcase automatically (girl named Moo, rival Barry, running shoes and bicycle already given)
+- The normal Platinum intro, exactly as Renegade ships it (name yourself, watch the Rowan scene, pick from the briefcase)
 - Whole party shares each fight's exp (split among whoever is getting it)
 - Rare Candies replaced with Exp. Share
 - Revives unusable
@@ -46,8 +46,6 @@ Outputs stay in `out\`. Intermediate patched Renegade is `out\_renegade_base.nds
 
 ## Notes
 
-- For the intro fix, boot a newly generated ROM and start **New Game**. Old save states retain the broken scene state. Press Start at the title screen; the suitcase opens automatically after loading.
-
 - Uses **Complete** Renegade (normal 1/8192 shiny rate) when that patch is present.
 - The randomizer does not print starter names. Look at the briefcase in-game.
 - If an emulator is installed (BizHawk / melonDS / DeSmuME), the ROM is launched after a run. Use `--no-launch` to skip that.
@@ -56,20 +54,25 @@ Outputs stay in `out\`. Intermediate patched Renegade is `out\_renegade_base.nds
 
 This repo does not include Nintendo ROMs. You supply Platinum; Renegade is applied from Drayanoâ€™s official patch that you copied in.
 
-## Intro-skip fix
+## No intro skip
 
-The skip now initializes the Route 201 characters and uses an on-frame script to
-open the suitcase once. Rowan and the counterpart are removed while the screen
-is black and restored after the field renderer reloads. This avoids a failed
-character-texture allocation that otherwise overwrites instruction memory.
-The native starter grant, dialogue, rival battle, and return home are preserved.
-The identity hook uses Gen 4 character codes and lives in skipped overlay code.
-Unsupported layouts fail before changing the ROM.
+Earlier builds skipped the intro: they warped New Game straight to the Route 201
+briefcase and bulk-set the story variables and flags for everything in between
+(Twinleaf, both houses, the lakefront walk, the first Lake Verity visit).
+Those forced values did not match the state the real scripts leave behind, so
+later events read the game as further along than it was: the Jubilife trainer
+school was broken, Lake Verity could not be revisited, and Jubilife had no
+working exit. The skip has been removed entirely rather than patched around —
+the intro now runs normally and every story variable is set by the game's own
+scripts.
 
-References: [Route 201 scripts](https://github.com/pret/pokeplatinum/blob/main/res/field/scripts/scripts_route_201.s),
-[map script lifecycle](https://github.com/pret/pokeplatinum/blob/main/include/constants/init_script_types.h),
-and [character texture allocation](https://github.com/pret/pokeplatinum/blob/main/src/overlay005/ov5_021ECC20.c).
+Nothing else changed: randomized wilds and starters, party exp share, Rare
+Candy to Exp. Share, unusable Revives, fainted-mon deletion, the wipe freeze and
+the one-catch-per-area rule are all still applied.
 
-Validation: 22 tests passed. The complete randomized build was booted in
-DeSmuME from the title screen through suitcase selection, the scene, Barry's
-battle, and the return home. The chosen seed was kept at 1583383857.
+The running shoes and bicycle that the skip handed out at the start are gone
+with it; you get them from the normal intro instead.
+
+An in-progress save made on an intro-skip ROM keeps the bad story state — it is
+stored in the save file, not the ROM. Generate a new ROM and start a **New
+Game** to get the fixed progression.

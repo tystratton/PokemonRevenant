@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from plat_rand.intro import thumb_bl
+from plat_rand.binary import thumb_bl
 from plat_rand.nuzlocke import (
     _ARM9_RAM,
     _BATTLE_COPY_OFF,

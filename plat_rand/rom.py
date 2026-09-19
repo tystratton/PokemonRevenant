@@ -22,6 +22,36 @@ def peek_title(path: str | Path) -> str:
         return handle.read(12).decode("ascii", "replace").strip("\x00 ")
 
 
+# NDS header: total used ROM size. A complete dump is never smaller than this.
+_USED_SIZE_OFFSET = 0x80
+_PLAUSIBLE_USED_SIZE = range(1 << 20, (256 << 20) + 1)
+
+
+def declared_rom_size(path: str | Path) -> int | None:
+    """Bytes of real data the NDS header claims, or None if it reads as junk."""
+    with Path(path).open("rb") as handle:
+        handle.seek(_USED_SIZE_OFFSET)
+        field = handle.read(4)
+    if len(field) < 4:
+        return None
+    declared = int.from_bytes(field, "little")
+    return declared if declared in _PLAUSIBLE_USED_SIZE else None
+
+
+def assert_complete_rom(path: str | Path) -> None:
+    """Reject a half-transferred dump before xdelta blames the wrong revision."""
+    path = Path(path)
+    declared = declared_rom_size(path)
+    actual = path.stat().st_size
+    if declared is not None and actual < declared:
+        raise RomError(
+            f"{path.name} is incomplete: {actual:,} bytes on disk, but its own "
+            f"header declares {declared:,} bytes of ROM data "
+            f"({actual / declared:.0%} present). The download or upload was cut "
+            "short; re-transfer the file and check its size before using it."
+        )
+
+
 def looks_like_renegade_file(path: str | Path) -> bool:
     title = peek_title(path).upper()
     return "RENEGADE" in title
@@ -47,7 +77,7 @@ class PlatinumRom:
             if b"PLAT" not in raw_name.upper() and "PLAT" not in title.upper():
                 raise RomError(
                     f"{path.name} does not look like Pokémon Platinum "
-                    f"(game code {code!r}, title {title!r})."
+                    f"(game code {raw_code!r}, title {title!r})."
                 )
         raw_arm9 = nds.arm9
         decompressed = ndspy.codeCompression.decompress(raw_arm9)

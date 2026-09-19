@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from plat_rand.intro import thumb_bl
+from plat_rand.binary import thumb_bl
 
 _HELPER_LUA = Path(__file__).resolve().parent / "nuzlocke_helper.lua"
 _ARM9_RAM = 0x02000000

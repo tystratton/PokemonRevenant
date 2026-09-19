@@ -5,7 +5,7 @@ Area identity is MapHeader_GetMapLabelTextID, shared by floors of one location.
 """
 from copy import deepcopy
 import struct
-from plat_rand.intro import thumb_bl
+from plat_rand.binary import thumb_bl
 from plat_rand.nuzlocke import _find_code_cave
 from plat_rand.rom import RomError
 
