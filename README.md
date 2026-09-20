@@ -21,7 +21,7 @@ Your clean root ROM is never overwritten.
 - Revives unusable
 - Fainted party Pokémon deleted after battle (baked into the `.nds`)
 - Wipe freezes the game. Run the randomizer again for a new seed and a new file
-- Only the first wild Pokémon in a named area can be caught; later throws show "First encounter already used in this area!"
+- One catch per area is **off by default** — its hook still crashes on the first loading-screen map transition. `--catch-lock` forces it on
 
 ## Install once
 
@@ -70,9 +70,18 @@ Route 201 briefcase and set `0x4095`, *finished first visit to Lake Verity*,
 so nobody ever walked out of that lake. Removing the skip did not break the
 hook, it exposed it.
 
-The read is gone. The battle-type filter it was attempting now lives only in
-the ball check, which reads the battle type from the battle-bag context, a
-struct that is fully built by the time that hook runs.
+That read is gone, but it was not the whole story: the crash survives its
+removal. Bisection is unambiguous that `apply_catch_lock` is responsible, so
+the feature is off by default until the real cause is found.
+
+Ruled out so far: the hook payloads are byte-identical to what the source
+generates; the code caves sit in ARM9 section 0 data, not BSS, and do not
+overlap any of the 122 overlays' RAM ranges; the save flags land inside the
+364-byte array the resolver at `0x2050870` bounds-checks; the appended
+message bank decodes byte-identically for all 49 original entries.
+
+Still unexamined: which of the seven entry points into `0x02052314` runs on a
+map transition, and what the hook does to save state when it fires there.
 
 ## No intro skip
 

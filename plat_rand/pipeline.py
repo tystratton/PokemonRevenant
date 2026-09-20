@@ -46,7 +46,11 @@ class RandomizeOptions:
     items: bool = True
     exp_share: bool = True
     nuzlocke: bool = True
-    catch_lock: bool = True
+    catch_lock: bool = False
+
+
+def options_catch_lock_applied(result) -> bool:
+    return not any("catch lock" in w for w in result.warnings)
 
 
 @dataclass
@@ -122,7 +126,10 @@ class RandomizeResult:
         lines.append("  - Revives cannot be used")
         lines.append("  - Fainted party Pokémon are deleted after battle (in the ROM)")
         lines.append("  - Wiping freezes the game; start a new randomized ROM for the next run")
-        lines.append("  - Only the first wild in a named area can be caught; later throws are denied in-game")
+        if not options_catch_lock_applied(self):
+            lines.append("  - One catch per area: NOT APPLIED (known crash)")
+        else:
+            lines.append("  - Only the first wild in a named area can be caught; later throws are denied in-game")
         return "\n".join(lines) + "\n"
 
     def public_text(self) -> str:
@@ -252,7 +259,10 @@ def randomize_rom(
         nuzlocke.notes.append(apply_catch_lock(rom))
     else:
         note_skip("catch lock")
-        nuzlocke.notes.append("One-catch-per-area rule skipped")
+        nuzlocke.notes.append(
+            "One catch per area is OFF: its hook still crashes on the first "
+            "loading-screen map transition. Force it on with --catch-lock."
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     rom.save(output_path)
