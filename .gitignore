@@ -9,3 +9,6 @@ venv/
 tools/*.exe
 tools/*.zip
 **/Old Versions/
+
+# Debug dumps are analysis artifacts, not build output.
+!debug_dump/
