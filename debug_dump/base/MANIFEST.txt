@@ -1,0 +1,17 @@
+source _renegade_base.nds
+size   104922516
+sha1   ea6e853d91f340d54602be3d61a18259a626229f
+arm9 1057784 bytes
+overlay 13: 41472 bytes
+overlay 78: 7296 bytes
+script 427: 4580 bytes
+script 909: 8 bytes
+script 429: 1036 bytes
+script 1096: 716 bytes
+script 31: 1688 bytes
+script 36: 3604 bytes
+script 112: 804 bytes
+script 123: 4364 bytes
+script 186: 2052 bytes
+encounters: 183 areas, 77592 bytes (fielddata/encountdata/pl_enc_data.narc)
+zone_event: 149660 bytes
