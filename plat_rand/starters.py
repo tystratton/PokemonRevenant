@@ -173,6 +173,7 @@ def _patch_graphics_and_cries(
     starters: tuple[int, int, int],
     old: tuple[int, int, int],
     notes: list[str],
+    briefcase_art: bool = False,
 ) -> None:
     cry = find_unique(overlay, STARTER_CRIES_PREFIX)
     if cry is not None:
@@ -190,7 +191,16 @@ def _patch_graphics_and_cries(
                     overlay[hit + i * 4 : hit + i * 4 + 4] = species.to_bytes(4, "little")
             notes.append(f"Updated {len(hits)} extra starter ID tables (cries/sprites)")
 
-    _patch_dppt_starter_graphics(overlay, starters, notes)
+    if briefcase_art:
+        _patch_dppt_starter_graphics(overlay, starters, notes)
+    else:
+        # Renegade Platinum's own randomising guide says the briefcase pictures
+        # are the one thing the randomizer cannot change, and this rewrite
+        # rearranges hand-assembled Thumb in an overlay Drayano modified.
+        notes.append(
+            "Briefcase pictures left vanilla (use --briefcase-art to rewrite them); "
+            "the case still hands out the randomized species"
+        )
 
 
 def randomize_starters(
@@ -198,6 +208,7 @@ def randomize_starters(
     rng: Random,
     *,
     allow_legendaries: bool = True,
+    briefcase_art: bool = False,
 ) -> StarterResult:
     overlay_id = STARTER_OVERLAY_ID
     try:
@@ -216,7 +227,7 @@ def randomize_starters(
     )
     _write_starters(overlay, new, offset)
     notes = [f"Wrote starter IDs in overlay {overlay_id} at 0x{offset:X}"]
-    _patch_graphics_and_cries(overlay, new, old, notes)
+    _patch_graphics_and_cries(overlay, new, old, notes, briefcase_art)
     rom.mark_overlay_dirty(overlay_id)
     _patch_rival_scripts(rom, new, notes)
     return StarterResult(overlay_id=overlay_id, old=old, new=new, notes=notes)

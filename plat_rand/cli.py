@@ -51,6 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
         ("catch-lock", "one catch per area"),
     ):
         skips.add_argument(f"--no-{flag}", action="store_true", help=f"Skip {help_text}")
+    parser.add_argument(
+        "--briefcase-art",
+        action="store_true",
+        help="Also rewrite the briefcase sprite code (Renegade's guide advises against it)",
+    )
     parser.add_argument("--gui", action="store_true", help="Open the window")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
@@ -85,6 +90,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         # Opening N emulators at once helps nobody.
         launch=not args.no_launch and args.count == 1,
         starters=not args.no_starters,
+        briefcase_art=args.briefcase_art,
         encounters=not args.no_encounters,
         items=not args.no_items,
         exp_share=not args.no_exp_share,

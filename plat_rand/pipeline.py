@@ -41,6 +41,7 @@ class RandomizeOptions:
     launch: bool = True
     # Per-patch switches, so a crash can be bisected to one subsystem.
     starters: bool = True
+    briefcase_art: bool = False
     encounters: bool = True
     items: bool = True
     exp_share: bool = True
@@ -217,7 +218,10 @@ def randomize_rom(
         warnings.append(f"{name} was skipped (--no-{name.replace(' ', '-')}).")
 
     if options.starters:
-        starters = randomize_starters(rom, rng, allow_legendaries=options.allow_legendaries)
+        starters = randomize_starters(
+            rom, rng, allow_legendaries=options.allow_legendaries,
+            briefcase_art=options.briefcase_art,
+        )
     else:
         note_skip("starters")
         vanilla = tuple(VANILLA_STARTERS)

@@ -43,3 +43,21 @@ def test_graphics_prefix_at_the_very_end_is_not_written_past():
     _patch_dppt_starter_graphics(overlay, (387, 390, 393), notes)
     assert bytes(overlay) == before
     assert "no room" in notes[0]
+
+
+def test_briefcase_art_is_opt_in():
+    """Renegade's guide says the pictures are the one thing not to rewrite."""
+    from plat_rand.constants import STARTER_GRAPHICS_PREFIX
+    from plat_rand.starters import _patch_graphics_and_cries
+
+    overlay = bytearray(STARTER_GRAPHICS_PREFIX + bytes(0x100))
+    before = bytes(overlay)
+    notes: list[str] = []
+    _patch_graphics_and_cries(overlay, (1, 296, 319), (387, 390, 393), notes)
+    assert bytes(overlay) == before, "default build must not touch overlay code"
+    assert any("left vanilla" in n for n in notes)
+
+    notes2: list[str] = []
+    overlay2 = bytearray(before)
+    _patch_graphics_and_cries(overlay2, (1, 296, 319), (387, 390, 393), notes2, True)
+    assert bytes(overlay2) != before, "--briefcase-art must still work"
