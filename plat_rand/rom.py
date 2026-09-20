@@ -181,7 +181,15 @@ class PlatinumRom:
             for overlay_id in self.dirty_overlays:
                 overlay = self.overlays.get(overlay_id) or table[overlay_id]
                 table[overlay_id] = overlay
+                # Overlay.save fills compressedSize in from the data length.
+                # Platinum stores 0 there for every uncompressed overlay, so
+                # writing a real size makes the patched entries the only ones
+                # in the table that disagree with the rest. Keep what was
+                # there; saving a whole table must not edit untouched fields.
+                original_size = overlay.compressedSize
                 self.nds.files[overlay.fileID] = overlay.save(compress=overlay.compressed)
+                if not overlay.compressed:
+                    overlay.compressedSize = original_size
             self.nds.arm9OverlayTable = ndspy.code.saveOverlayTable(table)
 
         self.nds.saveToFile(str(path))
