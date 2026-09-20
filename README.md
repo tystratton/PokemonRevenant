@@ -21,7 +21,7 @@ Your clean root ROM is never overwritten.
 - Revives unusable
 - Fainted party Pokémon deleted after battle (baked into the `.nds`)
 - Wipe freezes the game. Run the randomizer again for a new seed and a new file
-- Only the first wild Pokémon in a named area can be caught; later throws show "First encounter already used in this area!"
+- One catch per area is **off by default** — its encounter hook crashes on leaving Lake Verity. `--catch-lock` forces it on
 
 ## Install once
 
@@ -53,6 +53,21 @@ Outputs stay in `out\`. Intermediate patched Renegade is `out\_renegade_base.nds
 - The one-catch-per-area rule is in the `.nds` and is saved with the game. The matching `.lua` is unused for that.
 
 This repo does not include Nintendo ROMs. You supply Platinum; Renegade is applied from Drayanoâ€™s official patch that you copied in.
+
+## Known bug: the one-catch-per-area hook
+
+`apply_catch_lock` replaces the `BL MapHeader_GetMapLabelTextID` at ARM9
+`0x52284` with a hook that reads `[r5]` for the battle type and passes `r4` as
+the save pointer, on the strength of a comment saying `r4=save, r5=dto`. The
+call site is reached with other values in those registers, so the hook
+dereferences a pointer that is not one.
+
+It survives the whole intro and dies on the first map transition that
+initialises wild encounters for real: leaving Lake Verity for Route 201 with a
+party. Confirmed by bisection against a clean Renegade base.
+
+Off by default until the hook obtains the save and battle type without
+trusting register contents. `--catch-lock` re-enables it as-is.
 
 ## No intro skip
 
