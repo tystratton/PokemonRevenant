@@ -12,7 +12,10 @@ import sys
 from pathlib import Path
 
 INTRO_MARKER = b"PLAT_INTRO_SKIP_V4"
-CATCH_MARKER = b"LOCK"
+# catch_lock rewrites this call site; vanilla branches straight to the
+# map-label lookup, so a different target means the hook is installed.
+CATCH_HOOK_OFFSET = 0x52284
+NUZLOCKE_HOOK_OFFSET = 0x5272C
 VANILLA_START = bytes.fromhex("9F010000FFFFFFFF040000000600000000000000")
 START_OFFSET = 0xEA12C
 ROUTE_201 = 342
@@ -50,7 +53,15 @@ def main(paths: list[str]) -> int:
                 dest = int.from_bytes(block[0:4], "little")
                 where = "Route 201 briefcase" if dest == ROUTE_201 else f"map {dest}"
                 print(f"  new-game spawn ............. MOVED -> {where}  <-- intro skip spawn patch")
-            print(f"  catch-lock state block ..... {'present' if CATCH_MARKER in arm9 or raw.count(CATCH_MARKER) else 'not found'}")
+            from plat_rand.binary import thumb_bl
+            for label, off, target in (
+                ("catch-lock encounter hook", CATCH_HOOK_OFFSET, 0x0203A138),
+                ("nuzlocke battle hook", NUZLOCKE_HOOK_OFFSET, 0x0207A21C),
+            ):
+                call = arm9[off:off + 4]
+                vanilla = thumb_bl(0x02000000 + off, target)
+                state = "vanilla (not installed)" if call == vanilla else f"installed (now {call.hex()})"
+                print(f"  {label} ..{'.' * max(0, 24 - len(label))} {state}")
         except Exception as exc:  # a diagnostic must never be the thing that fails
             print(f"  (could not parse ARM9: {type(exc).__name__}: {exc})")
 
