@@ -222,12 +222,30 @@ def test_save_flag_ids_cover_named_areas_without_overlap(label, expected):
     assert cpu.set_flags == [expected]
 
 
-def test_trainer_and_out_of_range_labels_do_not_touch_save_flags():
-    trainer, _ = start(label=3, battle_type=TRAINER)
+def test_out_of_range_labels_do_not_touch_save_flags():
     skipped, _ = start(label=AREA_COUNT)
-    assert trainer.checked == skipped.checked == []
-    assert trainer.set_flags == skipped.set_flags == []
-    assert trainer.mem[STATE] == skipped.mem[STATE] == 0
+    assert skipped.checked == []
+    assert skipped.set_flags == []
+    assert skipped.mem[STATE] == 0
+
+
+def test_start_hook_never_reads_the_struct_it_is_handed():
+    """[r5, #0] is uninitialised at this call site; reading it crashed the game.
+
+    The battle-type filter moved to the ball check, which reads the battle
+    type from the battle-bag context, a struct that is fully built by then.
+    """
+    payload = build_start(0x02000000, STATE)
+    for pc in range(0, len(payload) - 1, 2):
+        op = struct.unpack_from("<H", payload, pc)[0]
+        # 0x6800-0x68FF is LDR rX, [rY, #imm]; r5 as base is the bug.
+        if op & 0xF800 == 0x6800:
+            base = (op >> 3) & 7
+            assert base != 5, f"start hook loads through r5 at +0x{pc:X}"
+
+
+def test_ball_check_still_filters_trainer_battles():
+    trainer, _ = start(label=3, battle_type=TRAINER)
     assert ball(trainer, bag_ok=4) == 4
 
 

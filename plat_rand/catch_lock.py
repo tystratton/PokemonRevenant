@@ -44,13 +44,16 @@ class Thumb:
 
 def build_start(address, state):
     t = Thumb(address)
-    t.emit(0xB5F8)  # preserve r3-r7,lr; r4=save, r5=dto
+    # r4 is the save pointer (the caller itself passes it to SaveData_GetVarsFlags
+    # a few instructions later). r5 is the struct this function is still filling
+    # in: nothing writes [r5, #0] before this call site, so the battle-type test
+    # that used to live here read an uninitialised field and let whatever
+    # happened to be in that slot decide whether the hook ran.
+    t.emit(0xB5F8)  # preserve r3-r7,lr
     t.call(0x203A138)  # original map-label lookup
     t.emit(0x1C06)
     t.literal(7, state)
-    t.emit(0x2000, 0x6038, 0x6828)
-    t.literal(1, 0x685)  # trainer/link/frontier/Pal Park/tutorial
-    t.emit(0x4208); t.branch("done", 1)
+    t.emit(0x2000, 0x6038)  # state = 0
     t.emit(0x2E7E); t.branch("done", 2)
     t.emit(0x1C20); t.call(0x20507E4)  # SaveData_GetVarsFlags
     t.emit(0x1C04, 0x1C31, 0x295C); t.branch("low", 3)

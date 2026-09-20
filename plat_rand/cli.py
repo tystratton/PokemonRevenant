@@ -48,13 +48,9 @@ def build_parser() -> argparse.ArgumentParser:
         ("items", "Rare Candy -> Exp. Share and unusable Revives"),
         ("exp-share", "whole-party exp sharing"),
         ("nuzlocke", "fainted-mon deletion and the wipe freeze"),
+        ("catch-lock", "one catch per area"),
     ):
         skips.add_argument(f"--no-{flag}", action="store_true", help=f"Skip {help_text}")
-    parser.add_argument(
-        "--catch-lock",
-        action="store_true",
-        help="Re-enable one-catch-per-area (its hook crashes leaving Lake Verity)",
-    )
     parser.add_argument(
         "--briefcase-art",
         action="store_true",
@@ -99,7 +95,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         items=not args.no_items,
         exp_share=not args.no_exp_share,
         nuzlocke=not args.no_nuzlocke,
-        catch_lock=args.catch_lock,
+        catch_lock=not args.no_catch_lock,
     )
 
     results = []

@@ -21,7 +21,7 @@ Your clean root ROM is never overwritten.
 - Revives unusable
 - Fainted party Pokémon deleted after battle (baked into the `.nds`)
 - Wipe freezes the game. Run the randomizer again for a new seed and a new file
-- One catch per area is **off by default** — its encounter hook crashes on leaving Lake Verity. `--catch-lock` forces it on
+- Only the first wild Pokémon in a named area can be caught; later throws show "First encounter already used in this area!"
 
 ## Install once
 
@@ -54,20 +54,25 @@ Outputs stay in `out\`. Intermediate patched Renegade is `out\_renegade_base.nds
 
 This repo does not include Nintendo ROMs. You supply Platinum; Renegade is applied from Drayanoâ€™s official patch that you copied in.
 
-## Known bug: the one-catch-per-area hook
+## The Lake Verity crash
 
-`apply_catch_lock` replaces the `BL MapHeader_GetMapLabelTextID` at ARM9
-`0x52284` with a hook that reads `[r5]` for the battle type and passes `r4` as
-the save pointer, on the strength of a comment saying `r4=save, r5=dto`. The
-call site is reached with other values in those registers, so the hook
-dereferences a pointer that is not one.
+The one-catch-per-area hook replaces the `BL MapHeader_GetMapLabelTextID` at
+ARM9 `0x52284`. It used to read `[r5, #0]` for the battle type, on the
+strength of a comment saying `r5=dto`.
 
-It survives the whole intro and dies on the first map transition that
-initialises wild encounters for real: leaving Lake Verity for Route 201 with a
-party. Confirmed by bisection against a clean Renegade base.
+`r5` is not a finished struct there. The enclosing function at `0x020521b8`
+takes it as its output parameter and is still filling it in; nothing writes
+`[r5, #0]` before that call site, so the hook tested uninitialised memory and
+let whatever was in that slot decide whether it ran.
 
-Off by default until the hook obtains the save and battle type without
-trusting register contents. `--catch-lock` re-enables it as-is.
+The intro skip hid this for as long as it existed: it warped New Game to the
+Route 201 briefcase and set `0x4095`, *finished first visit to Lake Verity*,
+so nobody ever walked out of that lake. Removing the skip did not break the
+hook, it exposed it.
+
+The read is gone. The battle-type filter it was attempting now lives only in
+the ball check, which reads the battle type from the battle-bag context, a
+struct that is fully built by the time that hook runs.
 
 ## No intro skip
 
