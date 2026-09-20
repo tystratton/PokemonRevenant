@@ -80,6 +80,20 @@ def dump(rom_path: Path, label: str) -> None:
     except Exception as exc:
         lines.append(f"zone_event: UNAVAILABLE {exc}")
 
+    try:
+        table = bytes(rom.nds.arm9OverlayTable)
+        (folder / "arm9ovt.bin").write_bytes(table)
+        lines.append(f"overlay table: {len(table)} bytes, {len(table)//32} entries")
+    except Exception as exc:
+        lines.append(f"overlay table: UNAVAILABLE {exc}")
+
+    try:
+        _, scr = rom.get_narc(*SCRIPT_PATHS)
+        (folder / "script_404.bin").write_bytes(bytes(scr.files[404]))
+        lines.append(f"script 404 (item balls): {len(scr.files[404])} bytes")
+    except Exception as exc:
+        lines.append(f"script 404: UNAVAILABLE {exc}")
+
     (folder / "MANIFEST.txt").write_text("\n".join(lines) + "\n")
     print(f"[{label}] " + "; ".join(lines[1:3]))
     for line in lines[3:]:
