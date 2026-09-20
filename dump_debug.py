@@ -18,7 +18,7 @@ from plat_rand.constants import SCRIPT_PATHS, WILD_ENCOUNTER_PATHS
 OUT = Path("debug_dump")
 # Route 201 starter scene, its map init, and the rival/tag script files.
 SCRIPT_FILES = (427, 909, 429, 1096, 31, 36, 112, 123, 186)
-OVERLAYS = (13, 78)
+OVERLAYS = (13, 16, 78)
 
 
 def dump(rom_path: Path, label: str) -> None:
@@ -57,6 +57,21 @@ def dump(rom_path: Path, label: str) -> None:
         lines.append(f"encounters: {len(enc.files)} areas, {len(blob)} bytes ({path})")
     except Exception as exc:
         lines.append(f"encounters: UNAVAILABLE {exc}")
+
+    try:
+        from plat_rand.constants import ITEM_DATA_PATHS
+        _, items = rom.get_narc(*ITEM_DATA_PATHS)
+        (folder / "item_data.bin").write_bytes(b"".join(bytes(f) for f in items.files))
+        lines.append(f"item_data: {len(items.files)} items")
+    except Exception as exc:
+        lines.append(f"item_data: UNAVAILABLE {exc}")
+
+    try:
+        _, msg = rom.get_narc("msgdata/pl_msg.narc")
+        (folder / "msg_2.bin").write_bytes(bytes(msg.files[2]))
+        lines.append(f"msg file 2: {len(msg.files[2])} bytes of {len(msg.files)} banks")
+    except Exception as exc:
+        lines.append(f"msg: UNAVAILABLE {exc}")
 
     try:
         events = rom.get_file("fielddata/eventdata/zone_event.narc")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from plat_rand.binary import write_u16
+from plat_rand.binary import find_unique, write_u16
 
 # Demonic722 "EXP Share All" for US Platinum: mark every party slot as a
 # participant. Leave the original divide in place so the pot is split.
@@ -34,9 +34,14 @@ def apply_party_exp_share(rom) -> ExpShareResult:
         result.notes.append("Battle overlay 16 is missing; party Exp Share was not patched")
         return result
 
-    sig = overlay.find(_SIG)
-    if sig < 0:
-        result.notes.append("Battle exp signature not found; party Exp Share was not patched")
+    # Four bytes anchoring a write 0x12C0C away: if the signature is not
+    # unique the write lands on unrelated code, and 0x4308 is common enough
+    # that the instruction check below would not catch it.
+    sig = find_unique(overlay, _SIG)
+    if sig is None:
+        result.notes.append(
+            "Battle exp signature missing or ambiguous; party Exp Share was not patched"
+        )
         return result
 
     mask_at = sig + _MASK_REL
