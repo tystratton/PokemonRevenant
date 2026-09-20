@@ -18,3 +18,5 @@ encounters: 183 areas, 77592 bytes (fielddata/encountdata/pl_enc_data.narc)
 item_data: 446 items
 msg file 2: 2036 bytes of 724 banks
 zone_event: 149660 bytes
+overlay table: 3904 bytes, 122 entries
+script 404 (item balls): 8396 bytes
